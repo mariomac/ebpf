@@ -89,7 +89,18 @@ type bpf2go struct {
 	// Base directory of the Makefile. Enables outputting make-style dependencies
 	// in .d files.
 	makeBase string
+
+	// export
+	export string
+
+	// minimize diff changes (only applies if export == hex)
+	minDiff bool
 }
+
+const (
+	ExportRaw = "raw"
+	ExportHex = "hex"
+)
 
 func (b2g *bpf2go) Debugln(a ...any) {
 	if b2g.verbose {
@@ -118,6 +129,9 @@ func newB2G(stdout io.Writer, args []string) (*bpf2go, error) {
 	fs.Var(&b2g.cTypes, "type", "`Name` of a type to generate a Go declaration for, may be repeated")
 	fs.BoolVar(&b2g.skipGlobalTypes, "no-global-types", false, "Skip generating types for map keys and values, etc.")
 	fs.StringVar(&b2g.outputStem, "output-stem", "", "alternative stem for names of generated files (defaults to ident)")
+	fs.BoolVar(&b2g.minDiff, "min-diff", false, "minimize diff changes (only applies if export == hex)")
+	fs.StringVar(&b2g.export, "export", ExportRaw, "export format (raw, hex)")
+
 	outputSuffix := ""
 	if strings.HasSuffix(getEnv("GOFILE", ""), "_test.go") {
 		outputSuffix = "_test"

@@ -24,6 +24,7 @@ import (
 
 // {{ .Name.Load }} returns the embedded CollectionSpec for {{ .Name }}.
 func {{ .Name.Load }}() (*ebpf.CollectionSpec, error) {
+
 	reader := bytes.NewReader({{ .Name.Bytes }})
 	spec, err := ebpf.LoadCollectionSpecFromReader(reader)
 	if err != nil {
@@ -158,3 +159,6 @@ func {{ .Name.CloseHelper }}(closers ...io.Closer) error {
 // Do not access this directly.
 //go:embed {{ .File }}
 var {{ .Name.Bytes }} []byte
+
+// Do not access this directly.
+var {{ .Name.Bytes }}Format string
