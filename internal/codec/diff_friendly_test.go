@@ -1,133 +1,127 @@
 package codec
 
 import (
-	"bytes"
-	"slices"
+	"strings"
 	"testing"
 )
 
 func TestConvertToDiffFriendly(t *testing.T) {
 	tests := []struct {
 		name     string
-		previous []byte
-		current  []byte
-		expected []byte
+		previous string
+		current  string
+		expected string
 	}{
 		{
 			name:     "empty inputs",
-			previous: []byte{},
-			current:  []byte{},
-			expected: []byte{},
-		}, {
-			name:     "nil inputs",
-			previous: nil,
-			current:  nil,
-			expected: []byte{},
+			previous: "",
+			current:  "",
+			expected: "",
 		}, {
 			name:     "empty previous, non-empty current",
-			previous: []byte{},
-			current:  []byte("0123456789012345678901234567890123456789"),
-			expected: []byte(`01234567890123456789012345678901
-23456789`),
+			previous: "",
+			current:  "0123456789012345678901234567890123456789",
+			expected: `01234567890123456789012345678901
+23456789`,
 		}, {
 			name:     "non-empty previous, empty current",
-			previous: []byte("123456789"),
-			current:  []byte{},
-			expected: []byte{},
+			previous: "123456789",
+			current:  "",
+			expected: "",
 		}, {
 			name: "identical content",
-			previous: []byte(`01234567890123456789012345678901
-23456789012345678901234567890123`),
-			current: []byte(`01234567890123456789012345678901
-23456789012345678901234567890123`),
-			expected: []byte(`01234567890123456789012345678901
-23456789012345678901234567890123`),
+			previous: `01234567890123456789012345678901
+23456789012345678901234567890123`,
+			current: `01234567890123456789012345678901
+23456789012345678901234567890123`,
+			expected: `01234567890123456789012345678901
+23456789012345678901234567890123`,
 		}, {
 			name: "completely different content",
-			previous: []byte(`01234567890123456789012345678901
-23456789012345678901234567890123`),
-			current: []byte(`aabbccddeeffaabbccddeeffaabbccdd
-ddaafffffffffffffffffaafafafafaf`),
-			expected: []byte(`aabbccddeeffaabbccddeeffaabbccdd
-ddaafffffffffffffffffaafafafafaf`),
+			previous: `01234567890123456789012345678901
+23456789012345678901234567890123`,
+			current: `aabbccddeeffaabbccddeeffaabbccdd
+ddaafffffffffffffffffaafafafafaf`,
+			expected: `aabbccddeeffaabbccddeeffaabbccdd
+ddaafffffffffffffffffaafafafafaf`,
 		}, {
 			name: "partial overlap at beginning",
-			previous: []byte(`01234567890123456789012345678901
-23456789012345678901234567890123`),
-			current: []byte(`01234567890123456789012345678901
-ddaafffffffffffffffffaafafafafaf`),
-			expected: []byte(`01234567890123456789012345678901
-ddaafffffffffffffffffaafafafafaf`),
+			previous: `01234567890123456789012345678901
+23456789012345678901234567890123`,
+			current: `01234567890123456789012345678901
+ddaafffffffffffffffffaafafafafaf`,
+			expected: `01234567890123456789012345678901
+ddaafffffffffffffffffaafafafafaf`,
 		}, {
 			name: "partial overlap at end",
-			previous: []byte(`01234567890123456789012345678901
-23456789012345678901234567890123`),
-			current: []byte(`ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
-			expected: []byte(`ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
+			previous: `01234567890123456789012345678901
+23456789012345678901234567890123`,
+			current: `ddaafffffffffffffffffaafafafafaf
+23456789012345678901234567890123`,
+			expected: `ddaafffffffffffffffffaafafafafaf
+23456789012345678901234567890123`,
 		}, {
 			name: "current is subset of previous",
-			previous: []byte(`01234567890123456789012345678901
+			previous: `01234567890123456789012345678901
 ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
-			current:  []byte(`ddaafffffffffffffffffaafafafafaf`),
-			expected: []byte(`ddaafffffffffffffffffaafafafafaf`),
+23456789012345678901234567890123`,
+			current:  `ddaafffffffffffffffffaafafafafaf`,
+			expected: `ddaafffffffffffffffffaafafafafaf`,
 		}, {
 			name:     "previous is subset of current",
-			previous: []byte(`ddaafffffffffffffffffaafafafafaf`),
-			current: []byte(`01234567890123456789012345678901
+			previous: `ddaafffffffffffffffffaafafafafaf`,
+			current: `01234567890123456789012345678901
 ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
-			expected: []byte(`01234567890123456789012345678901
+23456789012345678901234567890123`,
+			expected: `01234567890123456789012345678901
 ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
+23456789012345678901234567890123`,
 		}, {
 			name: "insertion and shifting in the beginning",
-			previous: []byte(`01234567890123456789012345678901
+			previous: `01234567890123456789012345678901
 ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
-			current: []byte(`aabb0123456789012345678901234567
+23456789012345678901234567890123`,
+			current: `aabb0123456789012345678901234567
 8901ddaafffffffffffffffffaafafaf
 afaf2345678901234567890123456789
-0123`),
-			expected: []byte(`aabb
+0123`,
+			expected: `aabb
 01234567890123456789012345678901
 ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
+23456789012345678901234567890123`,
 		}, {
 			name: "insertion and shifting in the middle",
-			previous: []byte(`01234567890123456789012345678901
+			previous: `01234567890123456789012345678901
 ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
-			current: []byte(`01234567890123456FFFF78901234567
+23456789012345678901234567890123`,
+			current: `01234567890123456FFFF78901234567
 8901ddaafffffffffffffffffaafafaf
 afaf2345678901234567890123456789
-0123`),
-			expected: []byte(`01234567890123456FFFF78901234567
+0123`,
+			expected: `01234567890123456FFFF78901234567
 8901
 ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
+23456789012345678901234567890123`,
 		},
 		{
 			name: "insertion and shifting in the middle with empty lines",
-			previous: []byte(`01234567890123456789012345678901
+			previous: `01234567890123456789012345678901
 
 
 ddaafffffffffffffffffaafafafafaf
 
-23456789012345678901234567890123`),
-			current: []byte(`01234567890123456FFFF78901234567
+23456789012345678901234567890123`,
+			current: `01234567890123456FFFF78901234567
 8901ddaafffffffffffffffffaafafaf
 afaf2345678901234567890123456789
-0123`),
-			expected: []byte(`01234567890123456FFFF78901234567
+0123`,
+			expected: `01234567890123456FFFF78901234567
 8901
 ddaafffffffffffffffffaafafafafaf
-23456789012345678901234567890123`),
+23456789012345678901234567890123`,
 		}, {
 			name: "multiple combinations",
-			previous: []byte(`0123456789
+			previous: `0123456789
 0123456789
 0123456789
 01ddaaffff
@@ -136,8 +130,8 @@ fffaafafaf
 afaf234567
 8901234567
 8901234567
-890123`),
-			current: []byte(`0123456789
+890123`,
+			current: `0123456789
 0123456FFF
 F789012345
 678901ddaa
@@ -147,8 +141,8 @@ afafafaf23
 45678dd901
 2345678901
 2345678901
-23`),
-			expected: []byte(`0123456789
+23`,
+			expected: `0123456789
 0123456FFFF789
 0123456789
 01ddaaffff
@@ -157,25 +151,22 @@ fffaafafaf
 afaf234567
 89dd01234567
 8901234567
-890123`),
+890123`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ConvertToDiffFriendly(tt.previous, tt.current, 32)
-			checkEqualIgnoreSpaces(t, tt.current, result)
-			if !bytes.Equal(result, tt.expected) {
-				t.Errorf("ConvertToDiffFriendly():\n%v\nwant:\n%v", string(result), string(tt.expected))
+			// check that tt.Current and result are equivalent (no hex digits added or removed)
+			resRaw := strings.ReplaceAll(result, "\n", "")
+			curRaw := strings.ReplaceAll(tt.current, "\n", "")
+			if resRaw != curRaw {
+				t.Errorf("generated result is not binary-equal to input:\nwant: %sgot:  %s", curRaw, resRaw)
+			}
+			if tt.expected != result {
+				t.Errorf("ConvertToDiffFriendly():\n      %v\nwant: %v", result, tt.expected)
 			}
 		})
-	}
-}
-
-func checkEqualIgnoreSpaces(t *testing.T, a, b []byte) {
-	t.Helper()
-	ra, rb := removeNonHex(slices.Clone(a)), removeNonHex(slices.Clone(b))
-	if !bytes.Equal(ra, rb) {
-		t.Errorf("bytes are not equal:\n%v\n%v", string(ra), string(rb))
 	}
 }

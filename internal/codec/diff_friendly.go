@@ -1,10 +1,10 @@
 package codec
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
 func HexString(src io.Reader, dst io.Writer) error {
@@ -26,33 +26,33 @@ func HexString(src io.Reader, dst io.Writer) error {
 	}
 }
 
-func ConvertToDiffFriendly(previous, current []byte, lineLen int) []byte {
+func ConvertToDiffFriendly(previous, current string, lineLen int) string {
 	// Remove all line breaks to get raw hexadecimal content
-	currentRaw := removeNonHex(current)
+	currentRaw := strings.ReplaceAll(current, "\n", "")
 
 	// Get lines from previous string
-	previousLines := bytes.Split(previous, []byte{'\n'})
+	previousLines := strings.Split(previous, "\n")
 
 	// Remove empty lines
-	var nonEmptyPreviousLines [][]byte
+	var nonEmptyPreviousLines []string
 	for _, line := range previousLines {
-		if len(line) > 0 {
+		if line != "" {
 			nonEmptyPreviousLines = append(nonEmptyPreviousLines, line)
 		}
 	}
 
-	var resultLines [][]byte
+	var resultLines []string
 	remainingCurrent := currentRaw
 
 	// Try to match lines from previous in order
 	for _, previousLine := range nonEmptyPreviousLines {
-		if len(previousLine) <= lineLen && bytes.HasPrefix(remainingCurrent, previousLine) {
+		if len(previousLine) <= lineLen && strings.HasPrefix(remainingCurrent, previousLine) {
 			// Found a matching line at the beginning
 			resultLines = append(resultLines, previousLine)
 			remainingCurrent = remainingCurrent[len(previousLine):]
 		} else {
 			// Try to find the line anywhere in the remaining current content
-			index := bytes.Index(remainingCurrent, previousLine)
+			index := strings.Index(remainingCurrent, previousLine)
 			if index != -1 && len(previousLine) <= lineLen {
 				// Add content before the match as separate lines
 				if index > 0 {
@@ -67,29 +67,16 @@ func ConvertToDiffFriendly(previous, current []byte, lineLen int) []byte {
 	}
 
 	// Add any remaining content as lines
-	if len(remainingCurrent) > 0 {
+	if remainingCurrent != "" {
 		resultLines = append(resultLines, breakIntoLines(remainingCurrent, lineLen)...)
 	}
 
-	return bytes.Join(resultLines, []byte{'\n'})
-}
-
-func removeNonHex(current []byte) []byte {
-	wi := 0
-	for _, b := range current {
-		if (b >= '0' && b <= '9') ||
-			(b >= 'A' && b <= 'F') ||
-			(b >= 'a' && b <= 'f') {
-			current[wi] = b
-			wi++
-		}
-	}
-	return current[:wi]
+	return strings.Join(resultLines, "\n")
 }
 
 // breakIntoLines splits a string into lines of maximum lineLen characters
-func breakIntoLines(content []byte, lineLen int) [][]byte {
-	var lines [][]byte
+func breakIntoLines(content string, lineLen int) []string {
+	var lines []string
 	for len(content) > 0 {
 		if len(content) <= lineLen {
 			lines = append(lines, content)
