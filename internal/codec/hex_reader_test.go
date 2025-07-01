@@ -73,8 +73,7 @@ func TestNewHexReader(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reader := strings.NewReader(tt.input)
-			hexReader, err := NewHexReader(reader)
+			hexReader, err := NewHexReader([]byte(tt.input))
 
 			if tt.wantErr {
 				if !errors.Is(err, io.EOF) {
@@ -109,8 +108,7 @@ func TestHexReader_ReadAt(t *testing.T) {
 	input := "0123456789abcdef"
 	expected := []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef}
 
-	reader := strings.NewReader(input)
-	hexReader, err := NewHexReader(reader)
+	hexReader, err := NewHexReader([]byte(input))
 	if err != nil {
 		t.Fatalf("NewHexReader() error = %v", err)
 	}
@@ -193,8 +191,7 @@ aabbccddEEFF
 		0x12, 0x55, // 1255
 	}
 
-	reader := strings.NewReader(input)
-	hexReader, err := NewHexReader(reader)
+	hexReader, err := NewHexReader([]byte(input))
 	if err != nil {
 		t.Fatalf("NewHexReader() error = %v", err)
 	}

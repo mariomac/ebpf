@@ -4,7 +4,7 @@
 package {{ .Package }}
 
 import (
-	"bytes"
+	"{{ .ReaderPkg }}"
 	_ "embed"
 	"fmt"
 	"io"
@@ -24,8 +24,7 @@ import (
 
 // {{ .Name.Load }} returns the embedded CollectionSpec for {{ .Name }}.
 func {{ .Name.Load }}() (*ebpf.CollectionSpec, error) {
-
-	reader := bytes.NewReader({{ .Name.Bytes }})
+	reader := {{ .Name.NewReader }}({{ .Name.Bytes }})
 	spec, err := ebpf.LoadCollectionSpecFromReader(reader)
 	if err != nil {
 		return nil, fmt.Errorf("can't load {{ .Name }}: %w", err)
@@ -161,4 +160,4 @@ func {{ .Name.CloseHelper }}(closers ...io.Closer) error {
 var {{ .Name.Bytes }} []byte
 
 // Do not access this directly.
-var {{ .Name.Bytes }}Format string
+var {{ .Name.NewReader }} func([]byte) io.ReaderAt = {{ .NewReaderImpl }}

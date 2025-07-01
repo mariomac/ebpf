@@ -6,9 +6,11 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"github.com/cilium/ebpf/internal/codec"
 	"go/build/constraint"
 	"go/token"
 	"io"
+	"reflect"
 	"sort"
 	"strings"
 	"text/template"
@@ -37,6 +39,10 @@ func (n templateName) maybeExport(str string) string {
 
 func (n templateName) Bytes() string {
 	return "_" + toUpperFirst(string(n)) + "Bytes"
+}
+
+func (n templateName) NewReader() string {
+	return string(n) + "NewReader"
 }
 
 func (n templateName) Specs() string {
@@ -104,6 +110,8 @@ type GenerateArgs struct {
 	Output io.Writer
 	// Function which transforms the input into a valid go identifier. Uses the default behaviour if nil
 	Identifier func(string) string
+
+	BinFormat string
 }
 
 // Generate bindings for a BPF ELF file.
@@ -118,6 +126,20 @@ func Generate(args GenerateArgs) error {
 	if strings.ContainsAny(args.ObjectFile, "\n") {
 		// Prevent injecting newlines into the template.
 		return fmt.Errorf("file %q contains an invalid character", args.ObjectFile)
+	}
+
+	binFormat, err := ReadBinFormat(args.BinFormat)
+	if err != nil {
+		return err
+	}
+	var newReaderImpl, readerPkg string
+	switch binFormat {
+	case BinaryFormatRaw:
+		newReaderImpl = "bytes.NewReader"
+		readerPkg = "bytes"
+	case BinaryFormatHex:
+		newReaderImpl = "codec.NewHexReader"
+		readerPkg = reflect.TypeOf(codec.HexReader{}).PkgPath()
 	}
 
 	for _, typ := range args.Types {
@@ -163,6 +185,7 @@ func Generate(args GenerateArgs) error {
 
 	var typeDecls []string
 	needsStructsPkg := false
+
 	for _, typ := range types {
 		name := typeNames[typ]
 		decl, err := gf.TypeDeclaration(name, typ)
@@ -185,6 +208,8 @@ func Generate(args GenerateArgs) error {
 		TypeDeclarations []string
 		File             string
 		NeedsStructsPkg  bool
+		ReaderPkg        string
+		NewReaderImpl    string
 	}{
 		b2gInt.CurrentModule,
 		args.Package,
@@ -196,6 +221,8 @@ func Generate(args GenerateArgs) error {
 		typeDecls,
 		args.ObjectFile,
 		needsStructsPkg,
+		readerPkg,
+		newReaderImpl,
 	}
 
 	var buf bytes.Buffer

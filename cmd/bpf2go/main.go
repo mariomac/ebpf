@@ -459,6 +459,7 @@ func (b2g *bpf2go) convert(tgt gen.Target, goarches gen.GoArches) (err error) {
 		Types:       types,
 		ObjectFile:  filepath.Base(objFileName),
 		Output:      goFile,
+		BinFormat:   b2g.export,
 	})
 	if err != nil {
 		return fmt.Errorf("can't write %s: %s", goFileName, err)
